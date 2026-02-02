@@ -2,46 +2,1027 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1A1A1A" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#3b82f6" />
     <meta
       name="description"
-      content="KAVIA AI Application"
+      content="A responsive, single-file Sudoku solver. Enter digits, clear, validate, and solve."
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+    <title>Sudoku Solver</title>
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <!-- Load Inter font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <title>KAVIA App</title>
+    <!-- Font (optional, safe to remove if you need fully offline) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg: #f9fafb;
+        --surface: #ffffff;
+        --text: #111827;
+        --muted: #64748b;
+        --primary: #3b82f6;
+        --success: #06b6d4;
+        --error: #ef4444;
+        --border: #e5e7eb;
+
+        --grid-border: #111827;
+        --cell-border: #d1d5db;
+        --cell-bg: #ffffff;
+        --cell-bg-fixed: #f3f4f6;
+        --cell-bg-focus: #eff6ff;
+        --cell-bg-related: #f8fafc;
+        --cell-bg-conflict: #fef2f2;
+
+        --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+        --radius: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          sans-serif;
+        background: radial-gradient(
+            1200px 500px at 30% 0%,
+            rgba(59, 130, 246, 0.12),
+            transparent 55%
+          ),
+          radial-gradient(
+            900px 450px at 80% 10%,
+            rgba(6, 182, 212, 0.1),
+            transparent 50%
+          ),
+          var(--bg);
+        color: var(--text);
+      }
+
+      .page {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        padding: 28px 18px 10px;
+        text-align: center;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      .logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--success));
+        box-shadow: 0 10px 18px rgba(59, 130, 246, 0.25);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 8px auto 0;
+        max-width: 68ch;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      main {
+        width: min(980px, 100%);
+        margin: 0 auto;
+        padding: 18px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid rgba(229, 231, 235, 0.9);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+
+      .content {
+        padding: 16px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        align-items: start;
+      }
+
+      @media (min-width: 900px) {
+        .layout {
+          grid-template-columns: 520px 1fr;
+        }
+      }
+
+      /* Sudoku board */
+      .board-wrap {
+        padding: 16px;
+      }
+
+      .board-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .board-title {
+        margin: 0;
+        font-size: 14px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .pill {
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(249, 250, 251, 0.7);
+      }
+
+      .sudoku {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        border: 2px solid var(--grid-border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--cell-bg);
+        touch-action: manipulation;
+      }
+
+      .cell {
+        border: 1px solid var(--cell-border);
+        background: var(--cell-bg);
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      /* bold 3x3 separators */
+      .cell.sep-r {
+        border-right: 2px solid var(--grid-border);
+      }
+      .cell.sep-b {
+        border-bottom: 2px solid var(--grid-border);
+      }
+
+      .cell input {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        text-align: center;
+        font-size: clamp(16px, 3.3vw, 22px);
+        font-weight: 600;
+        color: var(--text);
+        caret-color: transparent; /* feels more like a game */
+      }
+
+      .cell input::selection {
+        background: rgba(59, 130, 246, 0.25);
+      }
+
+      .cell.fixed {
+        background: var(--cell-bg-fixed);
+      }
+
+      .cell.fixed input {
+        color: #0f172a;
+      }
+
+      .cell.focused {
+        background: var(--cell-bg-focus);
+      }
+
+      .cell.related {
+        background: var(--cell-bg-related);
+      }
+
+      .cell.conflict {
+        background: var(--cell-bg-conflict);
+      }
+
+      .cell .note {
+        position: absolute;
+        left: 6px;
+        top: 6px;
+        font-size: 10px;
+        color: var(--muted);
+        opacity: 0.75;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      /* Controls */
+      .controls {
+        padding: 16px;
+      }
+
+      .controls h2 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        color: var(--muted);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+
+      .btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .btn-row-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: transform 0.06s ease, box-shadow 0.2s ease,
+          border-color 0.2s ease, background 0.2s ease;
+      }
+
+      button:hover {
+        box-shadow: 0 10px 18px rgba(17, 24, 39, 0.08);
+        border-color: rgba(203, 213, 225, 0.9);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--primary), #2563eb);
+        color: #fff;
+        border-color: rgba(37, 99, 235, 0.5);
+      }
+
+      .btn-danger {
+        background: #fff;
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #b91c1c;
+      }
+
+      .btn-secondary {
+        background: #fff;
+        border-color: rgba(6, 182, 212, 0.45);
+        color: #0e7490;
+      }
+
+      .btn-ghost {
+        background: rgba(248, 250, 252, 0.7);
+      }
+
+      .status {
+        margin-top: 12px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(249, 250, 251, 0.8);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .status strong {
+        display: inline-block;
+        margin-right: 6px;
+      }
+
+      .status.ok {
+        border-color: rgba(6, 182, 212, 0.4);
+      }
+
+      .status.warn {
+        border-color: rgba(239, 68, 68, 0.35);
+      }
+
+      .help {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      /* Number pad (mobile-friendly) */
+      .numpad {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+      }
+
+      @media (min-width: 700px) {
+        .numpad {
+          grid-template-columns: repeat(10, 1fr);
+        }
+      }
+
+      .num {
+        padding: 12px 0;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .num[data-action="erase"] {
+        font-weight: 800;
+      }
+
+      footer {
+        padding: 18px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 11px;
+        border: 1px solid var(--border);
+        border-bottom-width: 2px;
+        border-radius: 8px;
+        padding: 2px 6px;
+        background: #fff;
+        color: #0f172a;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
   </head>
+
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
+    <div class="page">
+      <header>
+        <div class="brand" aria-label="Sudoku Solver">
+          <div class="logo" aria-hidden="true"></div>
+          <h1>Sudoku Solver</h1>
+        </div>
+        <p class="subtitle">
+          Click a cell and type <strong>1–9</strong>. Use <kbd>Backspace</kbd> to
+          clear a cell. Press <kbd>S</kbd> to solve, <kbd>C</kbd> to clear.
+        </p>
+      </header>
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+      <main>
+        <section class="card">
+          <div class="layout">
+            <div class="board-wrap">
+              <div class="board-head">
+                <p class="board-title">Board</p>
+                <span class="pill" id="filledPill">0 / 81 filled</span>
+              </div>
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+              <div
+                id="board"
+                class="sudoku"
+                role="grid"
+                aria-label="9 by 9 Sudoku board"
+              ></div>
+
+              <p class="help">
+                Tip: Paste an 81-character string (digits and dots) anywhere on
+                the page to load it. Example:
+                <kbd>53..7....6..195....98....6.8...6...34..8..6...2...3.6....28....419..5....8..79</kbd>
+              </p>
+            </div>
+
+            <div class="controls">
+              <h2>Actions</h2>
+
+              <div class="btn-row">
+                <button class="btn-primary" id="btnSolve" type="button">
+                  Solve
+                </button>
+                <button class="btn-danger" id="btnClear" type="button">
+                  Clear
+                </button>
+              </div>
+
+              <div class="btn-row-3">
+                <button class="btn-secondary" id="btnValidate" type="button">
+                  Validate
+                </button>
+                <button class="btn-ghost" id="btnExample" type="button">
+                  Load Example
+                </button>
+                <button class="btn-ghost" id="btnResetFixed" type="button">
+                  Lock/Unlock Fixed
+                </button>
+              </div>
+
+              <div
+                id="status"
+                class="status"
+                role="status"
+                aria-live="polite"
+              >
+                <strong>Status:</strong>
+                <span id="statusText">Ready.</span>
+              </div>
+
+              <h2 style="margin-top: 16px">Number pad</h2>
+              <div class="numpad" role="group" aria-label="Number pad">
+                <button class="num" data-num="1" type="button">1</button>
+                <button class="num" data-num="2" type="button">2</button>
+                <button class="num" data-num="3" type="button">3</button>
+                <button class="num" data-num="4" type="button">4</button>
+                <button class="num" data-num="5" type="button">5</button>
+                <button class="num" data-num="6" type="button">6</button>
+                <button class="num" data-num="7" type="button">7</button>
+                <button class="num" data-num="8" type="button">8</button>
+                <button class="num" data-num="9" type="button">9</button>
+                <button class="num" data-action="erase" type="button">
+                  Erase
+                </button>
+              </div>
+
+              <p class="help">
+                The solver uses a fast backtracking algorithm with constraint
+                checks. It never guesses without checking validity.
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        Single-file Sudoku solver UI (HTML + CSS + JS). No external app
+        framework.
+      </footer>
+    </div>
+
+    <script>
+      "use strict";
+
+      /** Board state:
+       *  - grid[r][c] number 0..9
+       *  - fixed[r][c] boolean indicates locked/given cells
+       */
+      const state = {
+        grid: Array.from({ length: 9 }, () => Array(9).fill(0)),
+        fixed: Array.from({ length: 9 }, () => Array(9).fill(false)),
+        selected: { r: 0, c: 0 },
+        lockFixed: true,
+      };
+
+      const els = {
+        board: document.getElementById("board"),
+        status: document.getElementById("status"),
+        statusText: document.getElementById("statusText"),
+        filledPill: document.getElementById("filledPill"),
+        btnSolve: document.getElementById("btnSolve"),
+        btnClear: document.getElementById("btnClear"),
+        btnValidate: document.getElementById("btnValidate"),
+        btnExample: document.getElementById("btnExample"),
+        btnResetFixed: document.getElementById("btnResetFixed"),
+      };
+
+      function clamp(n, lo, hi) {
+        return Math.max(lo, Math.min(hi, n));
+      }
+
+      function cellIndex(r, c) {
+        return r * 9 + c;
+      }
+
+      function parseCharToVal(ch) {
+        if (ch >= "1" && ch <= "9") return Number(ch);
+        return 0;
+      }
+
+      function serializeGrid(grid) {
+        let out = "";
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            out += grid[r][c] === 0 ? "." : String(grid[r][c]);
+          }
+        }
+        return out;
+      }
+
+      function countFilled(grid) {
+        let n = 0;
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (grid[r][c] !== 0) n++;
+          }
+        }
+        return n;
+      }
+
+      function setStatus(kind, message) {
+        els.status.classList.remove("ok", "warn");
+        if (kind === "ok") els.status.classList.add("ok");
+        if (kind === "warn") els.status.classList.add("warn");
+        els.statusText.textContent = message;
+      }
+
+      function deepCopyGrid(grid) {
+        return grid.map((row) => row.slice());
+      }
+
+      function isValidPlacement(grid, r, c, val) {
+        // Check row/col
+        for (let i = 0; i < 9; i++) {
+          if (i !== c && grid[r][i] === val) return false;
+          if (i !== r && grid[i][c] === val) return false;
+        }
+        // Check box
+        const br = Math.floor(r / 3) * 3;
+        const bc = Math.floor(c / 3) * 3;
+        for (let rr = br; rr < br + 3; rr++) {
+          for (let cc = bc; cc < bc + 3; cc++) {
+            if ((rr !== r || cc !== c) && grid[rr][cc] === val) return false;
+          }
+        }
+        return true;
+      }
+
+      function findConflicts(grid) {
+        const conflicts = new Set();
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const v = grid[r][c];
+            if (v === 0) continue;
+            if (!isValidPlacement(grid, r, c, v)) {
+              conflicts.add(cellIndex(r, c));
+            }
+          }
+        }
+        return conflicts;
+      }
+
+      function computeCandidates(grid, r, c) {
+        if (grid[r][c] !== 0) return [];
+        const candidates = [];
+        for (let v = 1; v <= 9; v++) {
+          if (isValidPlacement(grid, r, c, v)) candidates.push(v);
+        }
+        return candidates;
+      }
+
+      function solveSudoku(grid) {
+        // Backtracking with MRV (minimum remaining values)
+        // Return true if solved; modifies grid in place.
+        let best = null; // {r, c, candidates}
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (grid[r][c] !== 0) continue;
+            const candidates = computeCandidates(grid, r, c);
+            if (candidates.length === 0) return false;
+            if (!best || candidates.length < best.candidates.length) {
+              best = { r, c, candidates };
+              if (candidates.length === 1) break;
+            }
+          }
+          if (best && best.candidates.length === 1) break;
+        }
+
+        if (!best) return true; // no empties
+
+        for (const v of best.candidates) {
+          grid[best.r][best.c] = v;
+          if (solveSudoku(grid)) return true;
+          grid[best.r][best.c] = 0;
+        }
+        return false;
+      }
+
+      function clearBoard() {
+        state.grid = Array.from({ length: 9 }, () => Array(9).fill(0));
+        state.fixed = Array.from({ length: 9 }, () => Array(9).fill(false));
+        renderAll();
+        setStatus("ok", "Cleared.");
+      }
+
+      function setCellValue(r, c, val) {
+        val = clamp(val, 0, 9);
+
+        if (state.lockFixed && state.fixed[r][c]) {
+          setStatus("warn", "That cell is locked (fixed). Unlock to edit.");
+          return;
+        }
+
+        state.grid[r][c] = val;
+        if (state.lockFixed) {
+          // If locking is on: user-entered non-zero becomes fixed when "Lock/Unlock Fixed" toggled?
+          // We do NOT auto-fix. Fixed is controlled by toggle button / example load.
+        }
+        renderAll();
+      }
+
+      function setSelected(r, c) {
+        state.selected = { r, c };
+        renderHighlights();
+      }
+
+      function renderBoard() {
+        els.board.innerHTML = "";
+
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            if (c === 2 || c === 5) cell.classList.add("sep-r");
+            if (r === 2 || r === 5) cell.classList.add("sep-b");
+
+            const input = document.createElement("input");
+            input.setAttribute("inputmode", "numeric");
+            input.setAttribute("pattern", "[1-9]");
+            input.setAttribute("aria-label", `Row ${r + 1}, Column ${c + 1}`);
+            input.dataset.r = String(r);
+            input.dataset.c = String(c);
+            input.maxLength = 1;
+
+            input.addEventListener("focus", () => setSelected(r, c));
+            input.addEventListener("click", () => setSelected(r, c));
+
+            // Handle direct typing (including mobile keyboards)
+            input.addEventListener("input", (e) => {
+              const raw = e.target.value;
+              const ch = raw ? raw[raw.length - 1] : "";
+              const v = parseCharToVal(ch);
+              e.target.value = v === 0 ? "" : String(v);
+              setCellValue(r, c, v);
+            });
+
+            // Handle backspace/delete reliably
+            input.addEventListener("keydown", (e) => {
+              const key = e.key;
+              if (key === "Backspace" || key === "Delete" || key === "0") {
+                e.preventDefault();
+                input.value = "";
+                setCellValue(r, c, 0);
+                return;
+              }
+
+              // Arrow navigation
+              if (
+                key === "ArrowUp" ||
+                key === "ArrowDown" ||
+                key === "ArrowLeft" ||
+                key === "ArrowRight"
+              ) {
+                e.preventDefault();
+                let nr = r,
+                  nc = c;
+                if (key === "ArrowUp") nr = r - 1;
+                if (key === "ArrowDown") nr = r + 1;
+                if (key === "ArrowLeft") nc = c - 1;
+                if (key === "ArrowRight") nc = c + 1;
+                nr = clamp(nr, 0, 8);
+                nc = clamp(nc, 0, 8);
+                focusCell(nr, nc);
+                return;
+              }
+
+              // Digits 1-9
+              if (key >= "1" && key <= "9") {
+                e.preventDefault();
+                const v = Number(key);
+                input.value = String(v);
+                setCellValue(r, c, v);
+                return;
+              }
+            });
+
+            cell.appendChild(input);
+
+            const note = document.createElement("div");
+            note.className = "note";
+            note.textContent = ""; // reserved for future notes/candidates
+            cell.appendChild(note);
+
+            els.board.appendChild(cell);
+          }
+        }
+      }
+
+      function focusCell(r, c) {
+        const idx = cellIndex(r, c);
+        const input = els.board.querySelectorAll("input")[idx];
+        if (input) input.focus();
+        setSelected(r, c);
+      }
+
+      function renderValues() {
+        const inputs = els.board.querySelectorAll("input");
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const idx = cellIndex(r, c);
+            const input = inputs[idx];
+            const cell = input.parentElement;
+
+            const v = state.grid[r][c];
+            input.value = v === 0 ? "" : String(v);
+
+            cell.classList.toggle("fixed", !!state.fixed[r][c]);
+            input.readOnly = state.lockFixed && !!state.fixed[r][c];
+          }
+        }
+        els.filledPill.textContent = `${countFilled(state.grid)} / 81 filled`;
+      }
+
+      function renderHighlights() {
+        const conflicts = findConflicts(state.grid);
+        const inputs = els.board.querySelectorAll("input");
+
+        const sr = state.selected.r;
+        const sc = state.selected.c;
+        const selectedVal = state.grid[sr][sc];
+
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const idx = cellIndex(r, c);
+            const input = inputs[idx];
+            const cell = input.parentElement;
+
+            const isFocused = r === sr && c === sc;
+            const sameRow = r === sr;
+            const sameCol = c === sc;
+            const sameBox =
+              Math.floor(r / 3) === Math.floor(sr / 3) &&
+              Math.floor(c / 3) === Math.floor(sc / 3);
+
+            const related = !isFocused && (sameRow || sameCol || sameBox);
+
+            cell.classList.toggle("focused", isFocused);
+            cell.classList.toggle("related", related);
+
+            const v = state.grid[r][c];
+            const matches =
+              selectedVal !== 0 && v !== 0 && v === selectedVal && !isFocused;
+            // If matches, keep related background; it's already subtle. (Could style separately later)
+
+            cell.classList.toggle("conflict", conflicts.has(idx));
+
+            // Accessible title hints
+            input.title =
+              v === 0
+                ? "Empty"
+                : `Value ${v}${state.fixed[r][c] ? " (fixed)" : ""}${
+                    matches ? " (same as selected)" : ""
+                  }`;
+          }
+        }
+
+        if (conflicts.size > 0) {
+          setStatus(
+            "warn",
+            `There ${
+              conflicts.size === 1 ? "is" : "are"
+            } ${conflicts.size} conflicting cell${
+              conflicts.size === 1 ? "" : "s"
+            }. Fix duplicates in a row/column/box.`
+          );
+        } else {
+          // Don't overwrite other success messages too aggressively; only show ready if nothing else is being shown
+          if (els.statusText.textContent.includes("conflicting")) {
+            setStatus("ok", "No conflicts detected.");
+          }
+        }
+      }
+
+      function renderAll() {
+        renderValues();
+        renderHighlights();
+      }
+
+      function validateBoard() {
+        const conflicts = findConflicts(state.grid);
+        if (conflicts.size > 0) {
+          setStatus(
+            "warn",
+            `Invalid board: ${conflicts.size} conflict${
+              conflicts.size === 1 ? "" : "s"
+            } found.`
+          );
+          renderHighlights();
+          return false;
+        }
+        setStatus("ok", "Board is valid so far.");
+        return true;
+      }
+
+      function solveBoard() {
+        if (!validateBoard()) return;
+
+        const copy = deepCopyGrid(state.grid);
+        const startFilled = countFilled(copy);
+
+        const ok = solveSudoku(copy);
+        if (!ok) {
+          setStatus("warn", "No solution found for this board.");
+          return;
+        }
+
+        state.grid = copy;
+        // Mark given/fixed cells: keep current fixed and also lock original filled cells if lockFixed is enabled
+        if (state.lockFixed) {
+          for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+              // keep existing fixed cells unchanged
+              // (do not auto-fix all solved cells)
+            }
+          }
+        }
+
+        renderAll();
+        const endFilled = countFilled(state.grid);
+        const filledDelta = endFilled - startFilled;
+        setStatus("ok", `Solved. Filled ${filledDelta} cell(s).`);
+      }
+
+      function loadFromString(s, markFixed = true) {
+        const cleaned = (s || "").replace(/\s+/g, "");
+        if (cleaned.length !== 81) {
+          setStatus("warn", "Paste must be exactly 81 characters (digits/dots).");
+          return;
+        }
+
+        const newGrid = Array.from({ length: 9 }, () => Array(9).fill(0));
+        const newFixed = Array.from({ length: 9 }, () => Array(9).fill(false));
+
+        for (let i = 0; i < 81; i++) {
+          const ch = cleaned[i];
+          const v = parseCharToVal(ch);
+          const r = Math.floor(i / 9);
+          const c = i % 9;
+          newGrid[r][c] = v;
+          if (markFixed && v !== 0) newFixed[r][c] = true;
+        }
+
+        state.grid = newGrid;
+        if (markFixed) state.fixed = newFixed;
+        renderAll();
+
+        setStatus("ok", "Loaded puzzle.");
+      }
+
+      function loadExample() {
+        const example =
+          "53..7...." +
+          "6..195..." +
+          ".98....6." +
+          "8...6...3" +
+          "4..8..6.." +
+          "..2...3.6" +
+          ".6....28." +
+          "...419..5" +
+          "....8..79";
+        loadFromString(example, true);
+      }
+
+      function toggleFixedLock() {
+        state.lockFixed = !state.lockFixed;
+        if (state.lockFixed) {
+          // When enabling lock: treat all currently filled cells as fixed
+          for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+              state.fixed[r][c] = state.grid[r][c] !== 0;
+            }
+          }
+          setStatus("ok", "Fixed cells locked (current filled cells are fixed).");
+        } else {
+          // Unlock fixed: do not clear fixed markers; just allow editing
+          setStatus("ok", "Fixed cells unlocked (you can edit any cell).");
+        }
+        renderAll();
+      }
+
+      function applyNumpad(valueOrAction) {
+        const { r, c } = state.selected;
+        if (valueOrAction === "erase") {
+          setCellValue(r, c, 0);
+          focusCell(r, c);
+          return;
+        }
+        const v = Number(valueOrAction);
+        if (v >= 1 && v <= 9) {
+          setCellValue(r, c, v);
+          focusCell(r, c);
+        }
+      }
+
+      function initEvents() {
+        els.btnSolve.addEventListener("click", solveBoard);
+        els.btnClear.addEventListener("click", clearBoard);
+        els.btnValidate.addEventListener("click", validateBoard);
+        els.btnExample.addEventListener("click", loadExample);
+        els.btnResetFixed.addEventListener("click", toggleFixedLock);
+
+        document.querySelectorAll(".num").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const num = btn.dataset.num;
+            const action = btn.dataset.action;
+            if (action) applyNumpad(action);
+            else if (num) applyNumpad(num);
+          });
+        });
+
+        // Global keyboard shortcuts
+        window.addEventListener("keydown", (e) => {
+          if (e.target && e.target.tagName === "INPUT") {
+            // Cell inputs already handle most keys; still allow shortcuts
+          }
+
+          if (e.key === "s" || e.key === "S") {
+            // avoid firing while typing in some other input (only our grid exists)
+            e.preventDefault();
+            solveBoard();
+          }
+          if (e.key === "c" || e.key === "C") {
+            e.preventDefault();
+            clearBoard();
+          }
+          if (e.key === "v" || e.key === "V") {
+            e.preventDefault();
+            validateBoard();
+          }
+        });
+
+        // Paste to load puzzle
+        window.addEventListener("paste", (e) => {
+          const text = (e.clipboardData || window.clipboardData).getData("text");
+          if (!text) return;
+          const cleaned = text.replace(/\s+/g, "");
+          if (cleaned.length === 81) {
+            e.preventDefault();
+            loadFromString(cleaned, true);
+          }
+        });
+      }
+
+      function init() {
+        renderBoard();
+        initEvents();
+        renderAll();
+        focusCell(0, 0);
+        setStatus("ok", "Ready. Enter a puzzle and press Solve.");
+      }
+
+      init();
+    </script>
   </body>
 </html>
